@@ -1,0 +1,53 @@
+name: Build and test
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        bridge: ['OFF', 'ON']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ pkg-config libepoxy-dev libx11-dev libegl1-mesa-dev libpng-dev qt6-base-dev libgtk-3-dev xscreensaver xscreensaver-gl python3-pil xvfb locales
+          sudo locale-gen el_GR.UTF-8
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DGREEK_COAST_SETTINGS_BRIDGE=${{ matrix.bridge }}
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Test on virtual X11
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run -a ctest --test-dir build --output-on-failure
+      - name: Stage install and source package
+        run: |
+          DESTDIR="$PWD/stage" cmake --install build
+          cmake --build build --target package_source
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish source release after all builds pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version="$(cat VERSION)"
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; leaving it unchanged."
+            exit 0
+          fi
+          archive="greek-coast-$version-source.tar.gz"
+          git archive --format=tar.gz --prefix="greek-coast-$version/" -o "$archive" "$GITHUB_SHA"
+          sha256sum "$archive" > SHA256SUMS
+          gh release create "$tag" "$archive" SHA256SUMS --target "$GITHUB_SHA" --title "Greek Coast $version" --notes-file docs/RELEASE_NOTES.md

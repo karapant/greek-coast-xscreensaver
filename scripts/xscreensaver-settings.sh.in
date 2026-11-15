@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+gc_launcher_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+gc_config_library="$gc_launcher_dir/@GREEK_COAST_BRIDGE_FROM_BINDIR@"
+gc_data_dir="$gc_launcher_dir/@GREEK_COAST_DATA_FROM_BINDIR@"
+if [[ ! -f "$gc_config_library" && -f "$gc_launcher_dir/libgreek-coast-xs-config.so" ]]; then
+  gc_config_library="$gc_launcher_dir/libgreek-coast-xs-config.so"
+  gc_data_dir="$gc_launcher_dir/share/greek-coast"
+fi
+if [[ ! -f "$gc_config_library" ]]; then
+  echo 'Greek Coast settings bridge is not installed.' >&2; exit 1
+fi
+# Give each process an immutable library copy: rebuilding cannot truncate
+# a library that an already open Settings window has mapped.
+gc_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/greek-coast/settings-bridge"
+mkdir -p -- "$gc_cache_dir"
+read -r gc_digest _ < <(sha256sum -- "$gc_config_library")
+gc_cached_library="$gc_cache_dir/$gc_digest.so"
+if [[ ! -f "$gc_cached_library" ]]; then
+  gc_temp_library="$(mktemp "$gc_cache_dir/.bridge.XXXXXX")"
+  trap 'rm -f -- "$gc_temp_library"' EXIT
+  cp -- "$gc_config_library" "$gc_temp_library"
+  mv -f -- "$gc_temp_library" "$gc_cached_library"
+  trap - EXIT
+fi
+exec env GREEK_COAST_CONFIG="$gc_data_dir/greek-coast.xml" LD_PRELOAD="$gc_cached_library${LD_PRELOAD:+:$LD_PRELOAD}" "${GREEK_COAST_NATIVE_SETTINGS:-/usr/bin/xscreensaver-settings}" "$@"

@@ -1,0 +1,29 @@
+# Build directories and package output
+/build*/
+/_build*/
+/dist/
+/stage*/
+/_CPack_Packages/
+CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
+Testing/
+compile_commands.json
+install_manifest.txt
+*.o
+*.a
+*.so
+*.so.*
+*.tar.gz
+*.deb
+*.rpm
+# Local previews, generated exports and editor state
+/*preview.png
+/assets/*.obj
+__pycache__/
+*.py[cod]
+*.swp
+*~
+.vscode/
+.idea/
+.DS_Store

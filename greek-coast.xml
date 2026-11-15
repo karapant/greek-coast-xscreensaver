@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<screensaver name="greek-coast" _label="Greek Coast" gl="yes">
+  <command arg="--root" />
+  <hgroup>
+    <vgroup>
+      <select id="cycle">
+        <option id="real" _label="Time: Greece clock" />
+        <option id="accelerated" _label="Time: accelerated" arg-set="--cycle accelerated" />
+      </select>
+      <select id="speed">
+        <option id="speed-1" _label="Speed: 1× — 24 hours/day" />
+        <option id="speed-0-1" _label="Speed: 0.1× — 10 days/day" arg-set="--speed 0.1" />
+        <option id="speed-0-5" _label="Speed: 0.5× — 48 hours/day" arg-set="--speed 0.5" />
+        <option id="speed-2" _label="Speed: 2× — 12 hours/day" arg-set="--speed 2" />
+        <option id="speed-5" _label="Speed: 5× — 4h 48m/day" arg-set="--speed 5" />
+        <option id="speed-10" _label="Speed: 10× — 2h 24m/day" arg-set="--speed 10" />
+        <option id="speed-25" _label="Speed: 25× — 57m 36s/day" arg-set="--speed 25" />
+        <option id="speed-50" _label="Speed: 50× — 28m 48s/day" arg-set="--speed 50" />
+        <option id="speed-100" _label="Speed: 100× — 14m 24s/day" arg-set="--speed 100" />
+        <option id="speed-200" _label="Speed: 200× — 7m 12s/day" arg-set="--speed 200" />
+        <option id="speed-500" _label="Speed: 500× — 2m 52.8s/day" arg-set="--speed 500" />
+        <option id="speed-1000" _label="Speed: 1000× — 1m 26.4s/day" arg-set="--speed 1000" />
+      </select>
+      <number id="heading" type="spinbutton" arg="--heading %" _label="View direction (degrees)" low="0.0" high="359.9" default="270.0" />
+      <boolean id="drift" _label="View: gentle camera drift" arg-unset="--no-drift" />
+      <number id="wind" type="slider" arg="--wind %" _label="Water: wind strength" _low-label="Gentle" _high-label="Breezy" low="1" high="12" default="5" />
+      <boolean id="clouds" _label="Sky: volumetric clouds" arg-unset="--no-clouds" />
+      <boolean id="celestials" _label="Sky: sun and moon" arg-unset="--no-celestials" />
+    </vgroup>
+    <vgroup>
+      <boolean id="activity" _label="Village: people and cars" arg-unset="--no-activity" />
+      <number id="activity-scale" type="spinbutton" arg="--activity-scale %" _label="People size" low="0.75" high="2.5" default="1.8" />
+      <boolean id="boat" _label="Sea: one Greek boat at a time" arg-unset="--no-boat" />
+      <boolean id="taverna" _label="Village: hillside taverna" arg-unset="--no-taverna" />
+      <boolean id="fish" _label="Sea: small fish shoals" arg-unset="--no-fish" />
+      <select id="quality">
+        <option id="medium" _label="Detail: Medium" />
+        <option id="low" _label="Detail: Low" arg-set="--quality low" />
+        <option id="high" _label="Detail: High" arg-set="--quality high" />
+      </select>
+      <number id="fps" type="slider" arg="--fps %" _label="Performance: frame cap" _low-label="Low" _high-label="High" low="15" high="120" default="60" />
+    </vgroup>
+  </hgroup>
+  <_description>Time: Greece clock follows local date and season. Accelerated mode uses the Speed preset; the day length is shown in the menu. Waves, people, boats and fish always move at normal speed.
+
+Water and sky control wind and clouds. Village and Sea switches add activity. Detail and frame cap trade graphics quality for performance. Direction: 0=N, 90=E, 180=S, 270=W.</_description>
+</screensaver>

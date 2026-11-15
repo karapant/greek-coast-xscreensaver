@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Register/remove the installed hack without replacing the user's preferences."""
+import argparse,json,os,re,shlex,shutil
+from pathlib import Path
+base=Path(__file__).resolve().parent
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--home',type=Path,default=Path.home())
+parser.add_argument('--binary',type=Path,default=base/'@GREEK_COAST_BINARY_FROM_BINDIR@')
+parser.add_argument('--remove',action='store_true',help='Remove only Greek Coast from the screensaver list')
+parser.add_argument('--settings-bridge',action='store_true',help='Use the optional per-user native settings compatibility launcher')
+args=parser.parse_args()
+binary=args.binary.resolve()
+if not args.remove and not binary.is_file():parser.error(f'Install the executable first: {binary}')
+if '\n' in str(binary) or '\r' in str(binary):parser.error('Executable path cannot contain a newline')
+config=args.home/'.xscreensaver';config.parent.mkdir(parents=True,exist_ok=True)
+text=config.read_text() if config.exists() else 'mode: random\nprograms: \\\n\n'
+backup=config.with_name('.xscreensaver.before-greek-coast')
+if config.exists() and not backup.exists():shutil.copy2(config,backup)
+lines=text.splitlines(keepends=True)
+start=next((i for i,line in enumerate(lines) if re.match(r'^programs\s*:',line)),None)
+if start is None:
+    lines+=['\n','programs: \\\n','\n'];start=len(lines)-2
+end=start+1
+while end<len(lines) and lines[end-1].rstrip('\n').endswith('\\'):
+    if not lines[end].strip():break
+    end+=1
+header=lines[start].split(':',1)[0]+': \\\n'
+body=lines[start].split(':',1)[1]+''.join(lines[start+1:end])
+# Remove the programs header's leading continuation, preserving each command.
+body=re.sub(r'^\s*\\\n','',body,count=1)
+parts=body.split(r'\n')
+command=re.compile(r'''(?:"[^"\n]*/greek-coast"|'[^'\n]*/greek-coast'|[^\s"']*/greek-coast|(?<![\w-])greek-coast)(?=\s|$)''')
+found=False;result=[]
+for part in parts:
+    if command.search(part):
+        if args.remove or found:continue
+        part=command.sub(lambda _:shlex.quote(str(binary)),part,count=1);found=True
+    result.append(part)
+body=r'\n'.join(result)
+if not args.remove and not found:
+    if body.strip() and not body.rstrip().endswith('\\'):body=body.rstrip()+' \\n\\\n'
+    body+=f'  GL: "Greek Coast" {shlex.quote(str(binary))} --root --cycle real --speed 1 '+r'\n'+'\\\n'
+lines[start:end]=[header+body]
+text=''.join(lines)
+bridge=(base/'greek-coast-xscreensaver-settings').resolve()
+state=args.home/'.local/state/greek-coast/registration.json'
+if args.settings_bridge:
+    if not bridge.is_file():parser.error('Build and install with GREEK_COAST_SETTINGS_BRIDGE=ON first')
+    if not state.exists():
+        state.parent.mkdir(parents=True,exist_ok=True)
+        previous=re.search(r'^demoCommand:.*$',text,re.M)
+        state.write_text(json.dumps({'previous_demo':previous.group(0) if previous else None}))
+    value='demoCommand:\t'+shlex.quote(str(bridge))
+    text=re.sub(r'^demoCommand:.*$',lambda _:value,text,flags=re.M) if re.search(r'^demoCommand:',text,re.M) else text+'\n'+value+'\n'
+    app=args.home/'.local/share/applications/xscreensaver-settings.desktop';app.parent.mkdir(parents=True,exist_ok=True)
+    if app.exists() and 'X-Greek-Coast-Managed=true' not in app.read_text() and not app.with_suffix('.desktop.before-greek-coast').exists():shutil.copy2(app,app.with_suffix('.desktop.before-greek-coast'))
+    app.write_text('[Desktop Entry]\nType=Application\nName=XScreenSaver Settings\nExec="'+str(bridge)+'"\nIcon=preferences-desktop-screensaver\nTerminal=false\nCategories=Settings;DesktopSettings;\nX-Greek-Coast-Managed=true\n')
+if args.remove:
+    previous=json.loads(state.read_text()).get('previous_demo') if state.exists() else 'demoCommand:\txscreensaver-settings'
+    text=re.sub(r'^demoCommand:.*greek-coast-xscreensaver-settings.*\n?',lambda _:previous+'\n' if previous else '',text,flags=re.M)
+    if state.exists():state.unlink()
+    app=args.home/'.local/share/applications/xscreensaver-settings.desktop'
+    if app.exists() and 'X-Greek-Coast-Managed=true' in app.read_text():
+        app.unlink();old=app.with_suffix('.desktop.before-greek-coast')
+        if old.exists():shutil.copy2(old,app)
+temp=config.with_name('.xscreensaver.greek-coast.tmp');temp.write_text(text)
+if config.exists():os.chmod(temp,config.stat().st_mode&0o777)
+temp.replace(config)
+print(('Removed' if args.remove else 'Registered')+' Greek Coast in '+str(config))
+print('Reopen XScreenSaver Settings to refresh the screensaver list.')
