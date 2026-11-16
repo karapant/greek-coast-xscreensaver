@@ -9,7 +9,7 @@ jobs:
       matrix:
         bridge: ['OFF', 'ON']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Dependencies
         run: |
           sudo apt-get update
@@ -35,7 +35,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Publish source release after all builds pass
         env:
           GH_TOKEN: ${{ github.token }}

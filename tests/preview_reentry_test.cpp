@@ -26,18 +26,25 @@ int main(int argc,char **argv){
     try{
         std::string id=std::to_string(host);child=fork();check(child>=0,"cannot fork preview");
         if(!child){execl(argv[1],argv[1],"--window-id",id.c_str(),"--fps","30","--date","2026-06-21T13:30:00+03:00",nullptr);_exit(2);}
-        auto painted=[&]{
-            for(int attempt=0;attempt<30;++attempt){
+        auto painted=[&](std::chrono::seconds timeout=std::chrono::seconds(3)){
+            const auto started=std::chrono::steady_clock::now();
+            const auto deadline=started+timeout;
+            do{
                 int status=0;check(waitpid(child,&status,WNOHANG)!=child,"preview exited during host reentry");
                 XImage *image=XGetImage(display,host,300,160,40,40,AllPlanes,ZPixmap);
                 bool nonblack=false;
                 if(image){for(int y=0;y<40;y+=4)for(int x=0;x<40;x+=4)nonblack|=XGetPixel(image,x,y)!=0;XDestroyImage(image);}
                 if(nonblack)return true;
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            }
+            }while(std::chrono::steady_clock::now()<deadline);
+            std::cerr<<"No preview pixels after "
+                     <<std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-started).count()
+                     <<" ms\n";
             return false;
         };
-        check(painted(),"preview did not initially render");
+        // Startup includes asset loading and software-driver shader compilation.
+        // Allow it more time than recovery of an already initialized renderer.
+        check(painted(std::chrono::seconds(15)),"preview did not initially render");
         Window rr,pp,*children=nullptr;unsigned count=0;
         XQueryTree(display,host,&rr,&pp,&children,&count);if(children)XFree(children);
         check(count==0,"compatible preview should render directly in host, without a child window");
